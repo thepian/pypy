@@ -408,6 +408,8 @@ def run_command_line(go_interactive,
             # handle the common case where a filename is specified
             # on the command-line.
             print "(resolving %s)" % sys.argv[0]
+            # scan sys.path for commands submodules
+            # only look for base commands in __builtin__ and those not yet parsed
             mainmodule.__file__ = sys.argv[0]
             scriptdir = resolvedirof(sys.argv[0])
             sys.path.insert(0, scriptdir)
