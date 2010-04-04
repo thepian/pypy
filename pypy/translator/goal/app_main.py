@@ -375,6 +375,7 @@ def run_command_line(go_interactive,
                 runpy.run_module(sys.argv[0], None, '__main__', True)
             success = run_toplevel(run_it)
         elif run_stdin:
+            print "(starting shell)"
             # handle the case where no command/filename/module is specified
             # on the command-line.
             if go_interactive or sys.stdin.isatty():
@@ -406,6 +407,7 @@ def run_command_line(go_interactive,
         else:
             # handle the common case where a filename is specified
             # on the command-line.
+            print "(resolving %s)" % sys.argv[0]
             mainmodule.__file__ = sys.argv[0]
             scriptdir = resolvedirof(sys.argv[0])
             sys.path.insert(0, scriptdir)
