@@ -56,9 +56,19 @@ def getinitialpath(srcdir):
     importlist.append(python_std_lib)
     return importlist
 
+def getinitialthepianpath(srcdir):
+    lib_thepian = os.path.join(srcdir, 'lib-thepian')
+    checkdir(lib_thepian)
+    importlist = []
+    importlist.append(lib_thepian)
+    return importlist
+    
 def pypy_initial_path(space, srcdir):
     try:
-        path = getinitialpath(srcdir)
+        try:
+            path = getinitialthepianpath(srcdir)
+        except OSError:
+            path = getinitialpath(srcdir)
     except OSError:
         return space.w_None
     else:

@@ -1,3 +1,4 @@
 .DS_Store
 *.pyc
 pypy/_cache
+pypy/lib/ctypes_config_cache/
