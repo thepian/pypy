@@ -2,3 +2,4 @@
 *.pyc
 pypy/_cache
 pypy/lib/ctypes_config_cache/
+pypy/doc/_build
