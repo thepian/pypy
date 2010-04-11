@@ -19,6 +19,7 @@ default_modules.update(dict.fromkeys(
     ["_codecs", "gc", "_weakref", "marshal", "errno", "imp",
      "math", "_sre", "_pickle_support", "operator",
      "parser", "symbol", "token", "_ast", "_random", "__pypy__",
+     "installation",
      "_testing"]))
 
 
