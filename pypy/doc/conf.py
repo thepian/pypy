@@ -34,7 +34,7 @@ source_suffix = '.txt'
 #source_encoding = 'utf-8'
 
 # The master toctree document.
-master_doc = 'index2'
+master_doc = 'index'
 
 # General information about the project.
 project = u'Thepian PyPy'
@@ -172,7 +172,7 @@ htmlhelp_basename = 'ThepianPyPydoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index2', 'ThepianPyPy.tex', u'Thepian PyPy Documentation',
+  ('index', 'ThepianPyPy.tex', u'Thepian PyPy Documentation',
    u'Mostly the PyPy crew', 'manual'),
 ]
 
