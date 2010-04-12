@@ -32,6 +32,12 @@ def checkdir(path):
     if not stat.S_ISDIR(st[0]):
         raise OSError(errno.ENOTDIR, path)
 
+lib_paths = [
+    ['pypy/lib/',
+    'lib-python/modified-{cpython-version}/',
+    'lib-python/{cpython-version}/',]
+]        
+
 def getinitialpath(srcdir):
     # build the initial path from the srcdir, which is the path of
     # the "dist" directory of a PyPy checkout.
@@ -56,19 +62,9 @@ def getinitialpath(srcdir):
     importlist.append(python_std_lib)
     return importlist
 
-def getinitialthepianpath(srcdir):
-    lib_thepian = os.path.join(srcdir, 'lib-thepian')
-    checkdir(lib_thepian)
-    importlist = []
-    importlist.append(lib_thepian)
-    return importlist
-    
 def pypy_initial_path(space, srcdir):
     try:
-        try:
-            path = getinitialthepianpath(srcdir)
-        except OSError:
-            path = getinitialpath(srcdir)
+        path = getinitialpath(srcdir)
     except OSError:
         return space.w_None
     else:
@@ -78,6 +74,21 @@ def pypy_initial_path(space, srcdir):
 
 pypy_initial_path.unwrap_spec = [ObjSpace, str]
 
+def structure_exists(paths):
+    for path in paths:
+        if not os.path.exists(path):
+            return False
+        st = os.stat(path)
+        if path.endswith('/') and not stat.S_ISDIR(st[0]):
+            return False
+    return True
+    
+def pypy_structure_exists(space,paths):
+    found = structure_exists(paths.split(":"))
+    return space.boolean(found)
+    
+pypy_structure_exists.unwrap_spec = [ObjSpace, str]    
+    
 def get(space):
     return space.fromcache(State)
 

@@ -182,12 +182,48 @@ def get_argument(option, argv, i):
                                    option)
         return argv[i], i
 
+product_library_paths = [
+    ['Library/%(product)s-%(version)s/'],
+    ['Library/%(product)s/'],
+    ['share/%(product)s-%(version)s/'],
+    ['share/%(product)s/'],
+]
+                    
+exe_mappings = {
+    '': 'pypy-c',
+    'py.py':'pypy-c',
+}
 
+def match_structure(base,variants,values):
+    for v in variants:
+        paths = [os.path.join(base,p % values) for p in v]
+        if sys.pypy_structure_exists(':'.join(paths)):
+            return paths
+    return None
+
+
+def get_product_name(executable_name):
+    if executable_name.endswith('.py'):
+        return executable_name[:-3]
+    if executable_name.startswith('pypy-'):
+        return 'pypy'
+    else:
+        return executable_name
+        
 def setup_initial_paths(executable, nanos):
+    """Set up 'sys.executable', 'sys.executable_name' and 'sys.path' before executing the command line 
+    
+    Walk up directories looking for a library root in . or ./share/pypy-X.X
+    ./Library/PRODUCT-X.X
+    ./Library/PRODUCT
+    ./share/PRODUCT-X.X
+    ./share/PRODUCT
+    
+    """
     # a substituted os if we are translated
     global os
     os = nanos
-    AUTOSUBPATH = 'share' + os.sep + 'pypy-%d.%d'
+    
     # find the full path to the executable, assuming that if there is no '/'
     # in the provided one then we must look along the $PATH
     if we_are_translated() and IS_WINDOWS and not executable.lower().endswith('.exe'):
@@ -203,6 +239,31 @@ def setup_initial_paths(executable, nanos):
                     executable = fn
                     break
     sys.executable = os.path.abspath(executable)
+    executable_name = sys.executable.split(os.sep)[-1]
+    sys.executable_name = executable_name in exe_mappings and exe_mappings[executable_name] or executable_name
+    sys.product_name = get_product_name(executable_name)
+    
+    apppath = None
+    search = executable
+    while 1:
+        dirname = resolvedirof(search)
+        if dirname == search:
+            # not found
+            break
+        apppath = match_structure(dirname, product_library_paths, { 
+            'executable': sys.executable_name,
+            'product': sys.product_name, 
+            'version': '%d.%d' % sys.pypy_version_info[:2]
+            })
+        if apppath:
+            # are we done? add it to path
+            break
+        search = dirname
+        
+    
+    # library = os.path.join(srcdir, 'Library', exename)
+    PATHVAR = '%s_PATH' % sys.product_name.upper()
+    AUTOSUBPATH = 'share' + os.sep + 'pypy-%d.%d'
 
     # set up a sys.path that depends on the local machine
     autosubpath = AUTOSUBPATH % sys.pypy_version_info[:2]
@@ -222,13 +283,19 @@ def setup_initial_paths(executable, nanos):
                 search = dirname    # walk to the parent directory
                 continue
         break      # found!
-    path = os.getenv('PYTHONPATH')
-    if path:
-        newpath = path.split(os.pathsep) + newpath
+    python_path = os.getenv(PATHVAR)
+    if python_path:
+        newpath = python_path.split(os.pathsep) + newpath
     newpath.insert(0, '')
+    
     # remove duplicates
     _seen = {}
     del sys.path[:]
+    if apppath:
+        for dir in apppath:
+            if dir not in _seen:
+                sys.path.append(dir)
+                _seen[dir] = True
     for dir in newpath:
         if dir not in _seen:
             sys.path.append(dir)
@@ -408,6 +475,9 @@ def run_command_line(go_interactive,
             # handle the common case where a filename is specified
             # on the command-line.
             print "(resolving %s)" % sys.argv[0]
+            import installation
+            if sys.argv[0] in installation.commands:
+                installation.commands.execute(sys.argv)
             # scan sys.path for commands submodules
             # only look for base commands in __builtin__ and those not yet parsed
             mainmodule.__file__ = sys.argv[0]
@@ -474,6 +544,14 @@ if __name__ == '__main__':
         except OSError:
             return None
 
+    # debugging only
+    def pypy_structure_exists(paths):
+        from pypy.module.sys.state import structure_exists
+        try:
+            return structure_exists(paths.split(":"))
+        except OSError:
+            return None
+
     # stick the current sys.path into $PYTHONPATH, so that CPython still
     # finds its own extension modules :-/
     import os
@@ -482,6 +560,7 @@ if __name__ == '__main__':
     from pypy.module.sys.version import PYPY_VERSION
     sys.pypy_version_info = PYPY_VERSION
     sys.pypy_initial_path = pypy_initial_path
+    sys.pypy_structure_exists = pypy_structure_exists
     os = nanos.os_module_for_testing
     sys.exit(entry_point(sys.argv[0], sys.argv[1:], os))
     #sys.exit(entry_point('app_main.py', sys.argv[1:]))
