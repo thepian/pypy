@@ -1,98 +1,119 @@
 # NOT_RPYTHON
-import sys,os,os.path
+import sys,imp,os,os.path
+from optparse import make_option, OptionParser
 
-def find_commands(management_dir):
+from pypy.module.installation.app_terminal import color_style
+
+def find_commands(base_dir):
     """
-    Given a path to a management directory, returns a list of all the command
+    Given a path to a base directory, returns a list of all the command
     names that are available.
 
     Returns an empty list if no commands are defined.
     """
-    command_dir = os.path.join(management_dir, 'commands')
+    command_dir = os.path.join(base_dir, 'commands')
     try:
         return [f[:-3] for f in os.listdir(command_dir)
                 if not f.startswith('_') and f.endswith('.py')]
     except OSError:
         return []
 
-exe_mappings = {
-    '': 'pypy-c',
-    'py.py':'pypy-c',
-}
-
-def find_executable_command_modules():
-    exename = os.path.split(sys.executable)[1]
-    exename = exename in exe_mappings and exe_mappings[exename] or exename
-    r = []
-    for syspath in sys.path:
-        if os.path.isdir(syspath):
-            path0 = os.path.join(syspath,exename)
-            commands_path = os.path.join(syspath,exename,'commands')
-            print commands_path
-            if os.path.isdir(path0) and os.path.isdir(commands_path):
-                r.append(commands_path)
-    return r
-                    
-def find_command_modules():
-    r = []
-    for p in sys.path:
-        if os.path.isdir(p):
-            for pp in os.listdir(p):
-                cp = os.path.join(p,pp,'commands')
-                if os.path.isdir(cp): r.append(pp)
-    return r
-
-def get_mod_path(name):
-    i = __import__(name,{},{},[])
-    return i.__path__[0]
-
 class CommandError(Exception):
     pass
 
-class CommandWrapper(object):
+COMMAND_DEFAULTS = dict(
+    option_list = (
+        make_option('--cluster', dest="cluster", help='The name of the active cluster'),
+        make_option('--settings',
+            help='The Python path to a settings module, e.g. "myproject.settings.main". If this isn\'t provided, the MAESTRO_SETTINGS_MODULE environment variable will be used.'),
+        make_option('--pythonpath',
+            help='A directory to add to the Python path, e.g. "/home/djangoprojects/myproject".'),
+        make_option('--traceback', action='store_true',
+            help='Print traceback on exception'),
+    ),
+    help = '',
+    args = ''
+)
 
-    def __init__(self,cmd=None,base=None,name=None):
+class CommandWrapper(object):
+    """Wraps a Command class or a module in the commands directory of an executable package"""
+
+    def __init__(self,mod=None,cmd=None,base=None,name=None):
         self._cmd = cmd
+        self._mod = mod
+        self._set_defaults()
         self.base = base
         self.name = name
+
+    def _load(self):
+        if not self._mod and not self._cmd:
+            try:
+                self._mod = __import__('%s.commands.%s' % (self.base, self.name),
+                    {}, {}, [])
+                self._set_defaults()
+                self._cmd = getattr(__import__('%s.commands.%s' % (self.base, self.name),
+                    {}, {}, ['Command']), 'Command')()
+            except AttributeError,e:
+                pass
+            
+    def _set_defaults(self):
+        try:
+            BaseCommand = getattr(self._mod,'BaseCommand')
+            self.command_defaults = {}
+            for attr in COMMAND_DEFAULTS:
+                self.command_defaults[attr] = getattr(BaseCommand,attr,COMMAND_DEFAULTS[attr])
+        except AttributeError,e:
+            self.command_defaults = COMMAND_DEFAULTS
+        
+    def get_mod(self):
+        """
+        Instantiate the module if not yet loaded. All errors raised by the import process
+        (ImportError, AttributeError) are allowed to propagate.
+        """
+        self._load()
+        return self._mod
+    mod = property(get_mod)
 
     def get_cmd(self):
         """
         Instantiate the command if not yet loade. All errors raised by the import process
         (ImportError, AttributeError) are allowed to propagate.
         """
-        if not self._cmd:
-            self._cmd = getattr(__import__('%s.commands.%s' % (self.base, self.name),
-                {}, {}, ['Command']), 'Command')()
+        self._load()
         return self._cmd
     cmd = property(get_cmd)
 
     def get_option_list(self):
-        return getattr(self.cmd,'option_list',BaseCommand.option_list)
+        return getattr(self.cmd or self.mod,'option_list',self.command_defaults['option_list'])
     option_list = property(get_option_list)
 
     def get_help(self):
-        return getattr(self.cmd,'help',BaseCommand.help)
+        return getattr(self.cmd or self.mod,'help',self.command_defaults['help'])
     help = property(get_help)
 
     def get_args(self):
-        return getattr(self.cmd,'args',BaseCommand.args)
+        return getattr(self.cmd or self.mod,'args',self.command_defaults['args'])
     args = property(get_args)
 
     def get_style(self):
-        return getattr(self.cmd,'style',color_style())
+        return getattr(self.cmd or self.mod,'style',color_style())
     style = property(get_style)
 
 
     def get_version(self):
-        if hasattr(self.cmd,'get_version'):
+        if hasattr(self.cmd,'get_version') and callable(self.cmd.get_version):
             return self.cmd.get_version()
-        import thepian
-        return thepian.VERSION
+        if hasattr(self.mod,'get_version') and callable(self.mod.get_version):
+            return self.mod.get_version()
+        #import thepian
+        #return thepian.VERSION
+        return "1.0"
 
     def usage(self, subcommand):
-        if hasattr(self.cmd,'usage'):
+        if hasattr(self.cmd,'usage') and callable(self.cmd.usage):
             return self.cmd.usage(subcommand)
+        if hasattr(self.mod,'usage') and callable(self.mod.usage):
+            return self.mod.usage(subcommand)
 
         usage = self.style.HEADING('%%prog %s [options] %s' % (subcommand, self.args))
         if self.help:
@@ -103,6 +124,8 @@ class CommandWrapper(object):
     def create_parser(self, prog_name, subcommand):
         if hasattr(self.cmd,'create_parser'):
             return self.cmd.create_parser(prog_name,subcommand)
+        if hasattr(self.mod,'create_parser'):
+            return self.mod.create_parser(prog_name,subcommand)
 
         return OptionParser(prog=prog_name,
                             usage=self.usage(subcommand),
@@ -118,7 +141,7 @@ class CommandWrapper(object):
 
     def run_from_argv(self, argv):
         """Run directly from command line arg list, ignores run_from_argv on the command to handle default options properly"""
-        parser = self.create_parser(argv[0], argv[1])
+        parser = self.create_parser(argv[0] or sys.executable_name, argv[1])
         options, args = parser.parse_args(argv[2:])
         self(*args, **options.__dict__)
 
@@ -139,31 +162,48 @@ class HelpWrapper(CommandWrapper):
 
 class Cmds(object):
     cache = None
+    _default_modules = None
     
+    def get_default_modules(self):
+        if self._default_modules is None:
+            self._default_modules = [sys.product_name]
+            if len(sys.argv) > 0:                
+                argv0 = sys.argv[0]
+                if argv0.endswith(".py"):
+                    argv0 = argv0[:-3]
+                self._default_modules.append(argv0)    
+        return self._default_modules
+        
+    default_modules = property(get_default_modules)
+
+    def _add_wrappers(self,modules):
+        for mod in modules:
+            try:
+                f, pathname, description = imp.find_module(mod)
+                try:
+                    cmd_and_wrapper = [(name,CommandWrapper(base=mod,name=name)) for name in find_commands(pathname)]
+                    self.cache.update(dict(cmd_and_wrapper))
+                except ImportError,e:
+                    print "Error while checking module '%s'" % mod, e
+                if f:
+                    f.close()
+            except ImportError, ie:
+                pass
+            
+        
     def get_commands(self):
         """
         Returns a dictionary mapping command names to their command wrappers noting the base module.
     
-        This works by looking for a commands package in thepian.cmdline, and
-        in each top level package -- if a commands package exists, all commands
-        in that package are registered.
-    
-        If a specific version of a command must be loaded (e.g., with the
-        startapp command), the instantiated module can be placed in the
-        dictionary in place of the application name.
+        This works by looking for a commands package in executable modules, and
+        any additional modules added with _add_wrappers.
     
         The dictionary is cached on the first call and reused on subsequent
         calls.
         """
         if self.cache is None:
             self.cache = { 'help' : HelpWrapper() }
-            # Add any top level packages with commands submodules
-            for mod in find_executable_command_modules():
-                try:
-                    cmd_and_wrapper = [(name,CommandWrapper(base=mod,name=name)) for name in find_commands(get_mod_path(mod))]
-                    self.cache.update(dict(cmd_and_wrapper))
-                except ImportError,e:
-                    print "Error while checking module '%s'" % mod, e
+            self._add_wrappers(self.default_modules)
                 
         return self.cache
     
