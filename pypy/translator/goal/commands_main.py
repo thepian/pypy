@@ -183,8 +183,10 @@ def get_argument(option, argv, i):
         return argv[i], i
 
 product_library_paths = [
+    ['Library/%(product)s/%(version)s/'],
     ['Library/%(product)s-%(version)s/'],
     ['Library/%(product)s/'],
+    ['share/%(product)s/%(version)s/'],
     ['share/%(product)s-%(version)s/'],
     ['share/%(product)s/'],
 ]
@@ -259,7 +261,8 @@ def setup_initial_paths(executable, nanos):
             # are we done? add it to path
             break
         search = dirname
-        
+    
+    #TODO try ~/Library    
     
     # library = os.path.join(srcdir, 'Library', exename)
     PATHVAR = '%s_PATH' % sys.product_name.upper()

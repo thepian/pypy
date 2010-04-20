@@ -9,7 +9,7 @@ class AppTestParsing(object):
         # sys.executable_name = "pypy-c"
         space.setattr(space.sys, space.wrap("executable_name"), space.wrap("pypy-c"))
         # sys.product_name = "pypy"
-        space.setattr(space.sys, space.wrap("product_name"), space.wrap("pypy"))
+        space.setattr(space.sys, space.wrap("product_name"), space.wrap("pypyexe"))
         
         # prepend sys.path
         # sys.path.insert(0,lib_path)
@@ -20,18 +20,18 @@ class AppTestParsing(object):
         
     def test_sanity(self):
         import sys
-        assert sys.product_name == "pypy"
+        assert sys.product_name == "pypyexe"
         assert sys.path[0] == "/repositories/pypy/pypy/module/installation/test/lib"
         
     def test_find_commands(self):
         import installation
-        commands = installation.find_commands("/repositories/pypy/pypy/module/installation/test/lib/pypy")
-        assert commands == ["test"]
+        commands = installation.find_commands("/repositories/pypy/pypy/module/installation/test/lib/pypyexe")
+        assert commands == ["test","testclass"]
         
     def test_get_default_modules(self):
         import installation, sys
         sys.argv = ["command.py","test"]
-        assert installation.commands.get_default_modules() == ["pypy","command"]
+        assert installation.commands.get_default_modules() == ["pypyexe","command"]
     
     def test_find(self):
         import installation, sys
@@ -41,7 +41,13 @@ class AppTestParsing(object):
         assert 'test' in commands
         assert commands['help'] is not None
         assert commands['test'] is not None
+        
+    def test_class_command(self):
+        import installation
+        installation.commands.execute(['command.py','testclass'])
+        cmd = installation.commands['testclass'].cmd
+        assert cmd.was_called
 
     def test_execute(self):
         import installation
-        installation.commands.execute(['test','test'])
+        installation.commands.execute(['command.py','test'])
