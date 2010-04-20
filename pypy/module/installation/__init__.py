@@ -9,7 +9,7 @@ class Module(MixedModule):
     appleveldefs = {
         'commands' : 'app_commands.COMMANDS',
         'find_commands' : 'app_commands.find_commands',
-        'get_mod_path' : 'app_commands.get_mod_path',
+        #'get_mod_path' : 'app_commands.get_mod_path',
         'CommandError' : 'app_commands.CommandError',
         'CommandWrapper' : 'app_commands.CommandWrapper',
         'HelpWrapper' : 'app_commands.HelpWrapper',
