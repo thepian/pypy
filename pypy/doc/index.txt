@@ -16,6 +16,8 @@ Getting into PyPy ...
 
 * `Getting Started`_: Getting started and playing with PyPy. 
 
+* `System Path`_: Determining the System Path.
+
 Mailing lists, bug tracker, IRC channel
 =============================================
 
@@ -57,3 +59,4 @@ on the `development mailing list`_.
 .. _`Getting Started`: getting-started.html
 .. _papers: extradoc.html
 .. _`Release 1.2`: release-1.2.0.html
+.. _`System Path`: system-path.html
