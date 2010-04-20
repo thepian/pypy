@@ -85,7 +85,7 @@ def structure_exists(paths):
     
 def pypy_structure_exists(space,paths):
     found = structure_exists(paths.split(":"))
-    return space.boolean(found)
+    return space.wrap(found)
     
 pypy_structure_exists.unwrap_spec = [ObjSpace, str]    
     
