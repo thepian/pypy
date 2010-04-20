@@ -19,12 +19,12 @@ def rev2int(rev):
     try:
         return int(rev)
     except ValueError:
-        import py
-        from pypy.tool.ansi_print import ansi_log
-        log = py.log.Producer("version")
-        py.log.setconsumer("version", ansi_log)
-        log.ERROR("No subversion revision number available!")
-        log.ERROR("Hard-coding '0'")
+        # import py
+        # from pypy.tool.ansi_print import ansi_log
+        # log = py.log.Producer("version")
+        # py.log.setconsumer("version", ansi_log)
+        # log.ERROR("No subversion revision number available!")
+        # log.ERROR("Hard-coding '0'")
         return 0
 
 
