@@ -1,5 +1,3 @@
-print 'loaded sitecustomize.py'
-
 from optparse import make_option, OptionParser
 
 import installation
