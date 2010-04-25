@@ -1,1 +1,1 @@
-print 'imported pypy executable commands'
+this_is_init = True

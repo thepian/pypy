@@ -479,7 +479,7 @@ def run_command_line(go_interactive,
             # on the command-line.
             print "(resolving %s)" % sys.argv[0]
             import installation
-            if sys.argv[0] in installation.commands:
+            if not sys.argv[0].endswith(".py"):
                 installation.commands.execute(sys.argv)
             # scan sys.path for commands submodules
             # only look for base commands in __builtin__ and those not yet parsed

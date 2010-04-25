@@ -2,6 +2,8 @@
 import sys,imp,os,os.path
 #from _optparse import OptionParser
 
+#from pypy.module.installation import app_terminal
+
 def find_commands(base_dir):
     """
     Given a path to a base directory, returns a list of all the command
@@ -35,11 +37,13 @@ class NoParser(object):
 		args = ()
 		return (options,args)
 	
-	def print_help(self):
+	def format_help(self):
 		pass
 
 class CommandWrapper(object):
     """Wraps a Command class or a module in the commands directory of an executable package"""
+    
+    error_level = 0
     
     def __init__(self,mod=None,cmd=None,base=None,name=None):
         self._cmd = cmd
@@ -52,7 +56,7 @@ class CommandWrapper(object):
         if not self._mod and not self._cmd:
             try:
                 self._mod = __import__('%s.commands.%s' % (self.base, self.name),
-                    {}, {}, [])
+                    {}, {}, ['*'])
                 self._set_defaults()
                 self._cmd = getattr(__import__('%s.commands.%s' % (self.base, self.name),
                     {}, {}, ['Command']), 'Command')()
@@ -113,7 +117,7 @@ class CommandWrapper(object):
             return self.mod.get_version()
         #import thepian
         #return thepian.VERSION
-        return "1.0"
+        return "0.1"
     
     def usage(self, subcommand):
         if hasattr(self.cmd,'usage') and callable(self.cmd.usage):
@@ -134,57 +138,63 @@ class CommandWrapper(object):
             return self.mod.create_parser(prog_name,subcommand)
         return NoParser()
     
-    def print_help(self, prog_name, subcommand):
-        if hasattr(self.cmd,'print_help'):
-            return self.cmd.print_help(prog_name,subcommand)
-        if hasattr(self.mod,'print_help'):
-            return self.mod.print_help(prog_name,subcommand)
+    def format_help(self, prog_name, subcommand):
+        if hasattr(self.cmd,'format_help'):
+            return self.cmd.format_help(prog_name,subcommand)
+        if hasattr(self.mod,'format_help'):
+            return self.mod.format_help(prog_name,subcommand)
         
         parser = self.create_parser(prog_name, subcommand)
-        parser.print_help()
+        return parser.format_help()
     
     def run_from_argv(self, argv):
         """Run directly from command line arg list, ignores run_from_argv on the command to handle default options properly"""
         parser = self.create_parser(argv[0] or sys.executable_name, argv[1])
         options, args = parser.parse_args(argv[2:])
-        self(*args, **options.__dict__)
+        return self(*args, **options.__dict__)
     
     def __call__(self, *args, **options):
+        """ Call the command
+        returns (message, error_level)
+        """
         if hasattr(self.cmd,'__call__'):
-            return self.cmd(*args,**options)
+            return self.cmd(*args,**options), self.error_level
         if hasattr(self.cmd,'execute'):
-            return self.cmd.execute(*args,**options)
+            return self.cmd.execute(*args,**options), self.error_level
         if hasattr(self.cmd,'handle'):
-            return self.cmd.handle(*args,**options)
-        print 'cannot execute command' #TODO raise?
+            return self.cmd.handle(*args,**options), self.error_level
+            
+        if hasattr(self.mod,'__call__') and callable(self.mod.__call__):
+            return self.mod(*args,**options), self.error_level
+        if hasattr(self.mod,'execute') and callable(self.mod.execute):
+            return self.mod.execute(*args,**options), self.error_level
+        if hasattr(self.mod,'handle') and callable(self.mod.handle):
+            return self.mod.handle(*args,**options), self.error_level
+            
+        return 'cannot execute command', 2
 
 class HelpWrapper(CommandWrapper):
     """Not sure if this should replace the special help handling"""
     
     def __call__(self,*args,**options):
-        import thepian
-        parser = LaxOptionParser(version=thepian.get_version(), option_list=BaseCommand.option_list)
-        options, args = parser.parse_args(argv)
-        if len(args) > 2:
-            self[args[2]].print_help(prog_name, args[2])
+        if len(args) > 0:
+            text = COMMANDS[args[0]].format_help(sys.product_name, args[0])
+            return (text , 0)
         else:
-            sys.stderr.write(self.main_help_text(argv) + '\n')
-            sys.exit(1) #TODO return instead
+            return (self.main_help_text(args) + '\n' , 1)
 	
     def main_help_text(self,argv=None):
         """
         Returns the script's main help text, as a string.
         """
-        import thepian
-        prog_name = os.path.basename(argv[0])
         style = color_style()
         usage = [
-            style.HEADING('%s <subcommand> [options] [args]' % prog_name),
-            'Thepian command line tool, version %s' % thepian.get_version(),
-            "Type '%s help <subcommand>' for help on a specific subcommand." % prog_name,
+            style.HEADING('%s <subcommand> [options] [args]' % sys.product_name),
+            'Thepian command line tool, version %s' % self.get_version(),
+            "Type '%s help <subcommand>' for help on a specific subcommand." % sys.product_name,
             'Available subcommands:',
         ]
-        commands = self.get_commands().keys()
+        commands = COMMANDS.get_commands().keys()
         commands.sort()
         return '\n'.join(usage + ['  %s' % cmd for cmd in commands])
 
@@ -231,7 +241,9 @@ class Cmds(object):
         calls.
         """
         if self.cache is None:
-            self.cache = { 'help' : HelpWrapper() }
+            help_mod = __import__("%s.commands" % sys.product_name, {}, {}, ['*'])
+            # help_mod = exec "import %s.commands; %s.commmands" % sys.product_name
+            self.cache = { 'help' : HelpWrapper(mod=help_mod) }
             self._add_wrappers(self.default_modules)
         
         return self.cache
@@ -267,9 +279,12 @@ class Cmds(object):
                 from thepian.conf import structure
                 if not structure.machine.known:
                     sys.stderr.write('Machine is not known (mac %s), cannot execute %s\n' % (structure.machine['mac'],repr(wrapper.cmd)))
-                    return
                     #TODO return error code
-            wrapper.run_from_argv(argv)
+            output, error_level = wrapper.run_from_argv(argv)
+            if output:
+                sys.stderr.write(output)
+            if error_level:
+                sys.exit(error_level)
         
         except CommandError, e:
             sys.stderr.write("%s\nType '%s help' for usage\n" % (e.message,os.path.basename(argv[0])))
@@ -307,15 +322,15 @@ def color_style():
         return no_style()
     class dummy: pass
     style = dummy()
-    style.ERROR = termcolors.make_style(fg='red', opts=('bold',))
-    style.ERROR_OUTPUT = termcolors.make_style(fg='red', opts=('bold',))
-    style.NOTICE = termcolors.make_style(fg='red')
-    style.HEADING = termcolors.make_style(fg='cyan', opts=('bold',))
-    style.HIGHLIGHT = termcolors.make_style(opts=('bold',))
-    style.SQL_FIELD = termcolors.make_style(fg='green', opts=('bold',))
-    style.SQL_COLTYPE = termcolors.make_style(fg='green')
-    style.SQL_KEYWORD = termcolors.make_style(fg='yellow')
-    style.SQL_TABLE = termcolors.make_style(opts=('bold',))
+    style.ERROR = make_style(fg='red', opts=('bold',))
+    style.ERROR_OUTPUT = make_style(fg='red', opts=('bold',))
+    style.NOTICE = make_style(fg='red')
+    style.HEADING = make_style(fg='cyan', opts=('bold',))
+    style.HIGHLIGHT = make_style(opts=('bold',))
+    style.SQL_FIELD = make_style(fg='green', opts=('bold',))
+    style.SQL_COLTYPE = make_style(fg='green')
+    style.SQL_KEYWORD = make_style(fg='yellow')
+    style.SQL_TABLE = make_style(opts=('bold',))
     return style
 
 def no_style():

@@ -14,4 +14,5 @@ class Module(MixedModule):
         'CommandError' : 'app_commands.CommandError',
         'CommandWrapper' : 'app_commands.CommandWrapper',
         'HelpWrapper' : 'app_commands.HelpWrapper',
+        '_NoParser' : 'app_commands.NoParser',
     }

@@ -1,3 +1,4 @@
+# NOT_RPYTHON
 """
 Sets up the terminal color scheme.
 """
@@ -23,15 +24,15 @@ def color_style():
         return no_style()
     class dummy: pass
     style = dummy()
-    style.ERROR = termcolors.make_style(fg='red', opts=('bold',))
-    style.ERROR_OUTPUT = termcolors.make_style(fg='red', opts=('bold',))
-    style.NOTICE = termcolors.make_style(fg='red')
-    style.HEADING = termcolors.make_style(fg='cyan', opts=('bold',))
-    style.HIGHLIGHT = termcolors.make_style(opts=('bold',))
-    style.SQL_FIELD = termcolors.make_style(fg='green', opts=('bold',))
-    style.SQL_COLTYPE = termcolors.make_style(fg='green')
-    style.SQL_KEYWORD = termcolors.make_style(fg='yellow')
-    style.SQL_TABLE = termcolors.make_style(opts=('bold',))
+    style.ERROR = make_style(fg='red', opts=('bold',))
+    style.ERROR_OUTPUT = make_style(fg='red', opts=('bold',))
+    style.NOTICE = make_style(fg='red')
+    style.HEADING = make_style(fg='cyan', opts=('bold',))
+    style.HIGHLIGHT = make_style(opts=('bold',))
+    style.SQL_FIELD = make_style(fg='green', opts=('bold',))
+    style.SQL_COLTYPE = make_style(fg='green')
+    style.SQL_KEYWORD = make_style(fg='yellow')
+    style.SQL_TABLE = make_style(opts=('bold',))
     return style
 
 def no_style():
