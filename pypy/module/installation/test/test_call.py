@@ -23,17 +23,6 @@ class AppTestCall(object):
             lib_path = join(dirname(path_0),'module','installation','test','lib')
             space.call_method(w_path, "insert", space.wrap(0), space.wrap(lib_path))
         
-    def test_class_command(self):
-        import installation
-        cmd = installation.commands['testclass'].cmd
-        assert cmd and callable(cmd)
-        installation.commands['testclass']()
-        assert cmd.was_called
-
-    def test_execute(self):
-        import installation
-        installation.commands['test']()
-
     def test_main_help(self):
         import installation
         wrap = installation.commands['help']
@@ -60,14 +49,28 @@ Available subcommands:
         "  --version   show program's version number and exit",
         '  -h, --help  show this help message and exit',""])
 
-    def test_command_help(self):
-        import installation
-        testclass_wrap = installation.commands['testclass']
+        test_wrap = installation.commands['test']
         wrap = installation.commands['help']
-        text, level = wrap('testclass') 
+        text, level = wrap('test') 
         assert text == "\n".join([
-        'Usage: pypyexe testclass [options] [installation]','',
-        testclass_wrap.cmd.help,'',
+        'Usage: pypyexe test [options] [installation]','',
+        test_wrap.mod.help,'',
         'Options:',
         "  --version   show program's version number and exit",
         '  -h, --help  show this help message and exit',""])
+
+    def test_command_call(self):
+        import installation
+        wrap = installation.commands['testclass']
+        assert wrap.cmd and callable(wrap.cmd)
+        text, level = wrap() 
+        assert text == "test class command"
+        assert level == 0
+
+        wrap = installation.commands['test']
+        assert wrap.mod
+        assert hasattr(wrap.mod,'handle')
+        assert callable(wrap.mod.handle)
+        text, level = wrap() 
+        assert text == "hey there"
+        assert level == 0

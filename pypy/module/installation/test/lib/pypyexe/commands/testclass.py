@@ -21,4 +21,5 @@ class Command(object):
 
     def __call__(self,*args,**options):
         self.was_called = True
+        return "test class command"
                 
