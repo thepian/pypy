@@ -1,4 +1,6 @@
 print 'loaded sitecustomize.py'
+import sys
+print sys.argv
 
 from optparse import make_option, OptionParser
 

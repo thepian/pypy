@@ -31,6 +31,19 @@ class BaseCommand(object):
     def __init__(self):
         self.style = color_style()
 
+    def get_version(self):
+        return 0.1
+        
+    def create_parser(self, prog_name, subcommand):
+        return OptionParser(prog=prog_name,
+                            usage=self.usage(subcommand),
+                            version=self.get_version(),
+                            option_list=self.option_list)
+
+    def print_help(self, prog_name, subcommand):
+        parser = self.create_parser(prog_name, subcommand)
+        parser.print_help()
+
     def __call__(self, *args, **options):
         try:
             if len(args) and len(self.args)==0:
