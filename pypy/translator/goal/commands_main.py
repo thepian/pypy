@@ -477,7 +477,6 @@ def run_command_line(go_interactive,
                 runpy.run_module(sys.argv[0], None, '__main__', True)
             success = run_toplevel(run_it)
         elif run_stdin:
-            print "(starting shell)"
             # handle the case where no command/filename/module is specified
             # on the command-line.
             if go_interactive or sys.stdin.isatty():
@@ -509,16 +508,19 @@ def run_command_line(go_interactive,
         else:
             # handle the common case where a filename is specified
             # on the command-line.
-            print "(resolving %s)" % sys.argv[0]
             import installation
             if not sys.argv[0].endswith(".py"):
-                installation.commands.execute(sys.argv)
-            # scan sys.path for commands submodules
-            # only look for base commands in __builtin__ and those not yet parsed
-            mainmodule.__file__ = sys.argv[0]
-            scriptdir = resolvedirof(sys.argv[0])
-            sys.path.insert(0, scriptdir)
-            success = run_toplevel(execfile, sys.argv[0], mainmodule.__dict__)
+                argv = sys.argv[:]
+                argv.insert(0,"")
+                installation.commands.execute(argv)
+                success = True
+            else:
+                # scan sys.path for commands submodules
+                # only look for base commands in __builtin__ and those not yet parsed
+                mainmodule.__file__ = sys.argv[0]
+                scriptdir = resolvedirof(sys.argv[0])
+                sys.path.insert(0, scriptdir)
+                success = run_toplevel(execfile, sys.argv[0], mainmodule.__dict__)
 
         # start a prompt if requested
         if inspect_requested():
