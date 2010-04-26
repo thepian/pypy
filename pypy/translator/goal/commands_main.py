@@ -191,6 +191,15 @@ product_library_paths = [
     ['share/%(product)s/'],
 ]
                     
+python_library_paths = [
+    ['Library/python/%(version)s/'],
+    ['Library/python-%(version)s/'],
+    ['Library/python%(version)s/'],
+    ['share/python/%(version)s/'],
+    ['share/python-%(version)s/'],
+    ['share/python%(version)s/'],
+]
+                    
 exe_mappings = {
     '': 'pypy-c',
     'py.py':'pypy-c',
@@ -263,6 +272,24 @@ def setup_initial_paths(executable, nanos):
         search = dirname
     
     #TODO try ~/Library    
+
+    pypath = None
+    search = executable
+    while 1:
+        dirname = resolvedirof(search)
+        if dirname == search:
+            # not found
+            break
+        pypath = match_structure(dirname, python_library_paths, { 
+            'executable': sys.executable_name,
+            'product': sys.product_name, 
+            'version': '%d.%d' % sys.version_info[:2]
+            })
+        if pypath:
+            # are we done? add it to path
+            break
+        search = dirname
+    
     
     # library = os.path.join(srcdir, 'Library', exename)
     PATHVAR = '%s_PATH' % sys.product_name.upper()
@@ -296,6 +323,11 @@ def setup_initial_paths(executable, nanos):
     del sys.path[:]
     if apppath:
         for dir in apppath:
+            if dir not in _seen:
+                sys.path.append(dir)
+                _seen[dir] = True
+    if pypath:
+        for dir in pypath:
             if dir not in _seen:
                 sys.path.append(dir)
                 _seen[dir] = True
