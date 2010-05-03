@@ -1,0 +1,28 @@
+bsddb - BerkeleyDB
+compiler - Python Compiler
+md5 - use hashlib
+sha - use hashlib
+plat-aix3
+plat-atheos
+plat-beos5
+plat-freebsd2
+plat-freebsd3
+plat-freebsd4
+plat-freebsd5
+plat-freebsd6
+plat-irix5
+plat-next3
+plat-unixware7
+plat-os2emx
+dl - use ctypes
+dircache - 
+ihooks - use imp
+popen2 - use subprocess
+rexec
+sets
+tkinter
+sqlite3
+lib-tk
+os2emxpath
+
+remove __init__.py from combined lib tree, causes trouble for py.test
