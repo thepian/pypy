@@ -1,10 +1,9 @@
-print 'loaded sitecustomize.py'
 import sys
-print sys.argv
-
 from optparse import make_option, OptionParser
 
 import installation
+
+print 'loaded sitecustomize.py with ', sys.argv
 
 installation.COMMAND_DEFAULTS = dict(
     option_list = (
