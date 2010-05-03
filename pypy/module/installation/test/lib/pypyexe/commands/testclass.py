@@ -8,6 +8,9 @@ class Command(object):
     args = '[installation]'
     option_list = ()
     
+    call_args = None
+    call_options = None
+    
     def get_version(self):
         return 0.1
         
@@ -20,6 +23,8 @@ class Command(object):
                             option_list=self.option_list)
 
     def __call__(self,*args,**options):
+        self.call_args = args
+        self.call_options = options
         self.was_called = True
         return "test class command"
                 

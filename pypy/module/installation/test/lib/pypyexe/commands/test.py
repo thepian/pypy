@@ -6,6 +6,9 @@ help = 'This is the test command bla.bla.'
 args = '[installation]'
 option_list = ()
 
+call_args = None
+call_options = None
+
 def get_version():
     return 0.1
     
@@ -15,6 +18,8 @@ def create_parser(prog_name, subcommand):
     return OptionParser(prog=prog_name, usage=usage, version=get_version(), option_list=option_list)
 
 def handle(*args,**options):
+    call_args = args
+    call_options = options
     was_called = True
     return 'hey there'
                 
