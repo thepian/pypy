@@ -509,7 +509,7 @@ def run_command_line(go_interactive,
             # handle the common case where a filename is specified
             # on the command-line.
             import installation
-            if not sys.argv[0].endswith(".py"):
+            if not sys.argv[0].endswith(".py") and sys.argv[0].find("/") == -1:
                 argv = sys.argv[:]
                 argv.insert(0,"")
                 installation.commands.execute(argv)
