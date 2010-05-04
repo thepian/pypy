@@ -18,6 +18,7 @@ def create_parser(prog_name, subcommand):
     return OptionParser(prog=prog_name, usage=usage, version=get_version(), option_list=option_list)
 
 def handle(*args,**options):
+    global call_args, call_options
     call_args = args
     call_options = options
     was_called = True

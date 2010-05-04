@@ -43,7 +43,7 @@ class NoParser(object):
 class CommandWrapper(object):
     """Wraps a Command class or a module in the commands directory of an executable package"""
     
-    error_level = 0
+    error_level = 0 #TODO allow it to be set by the Command handler
     
     def __init__(self,mod=None,cmd=None,base=None,name=None):
         self._cmd = cmd
@@ -280,7 +280,7 @@ class Cmds(object):
                 if not structure.machine.known:
                     sys.stderr.write('Machine is not known (mac %s), cannot execute %s\n' % (structure.machine['mac'],repr(wrapper.cmd)))
                     #TODO return error code
-            output, error_level = wrapper.run_from_argv(argv)
+            output, error_level = wrapper.run_from_argv(argv[2:])
             if output:
                 sys.stderr.write(output)
             if error_level:
