@@ -45,13 +45,16 @@ Available subcommands:
         wrap = installation.commands['help']
         text, level = wrap.run_from_argv(['','help','testclass'])
         # assert wrap.cmd.call_args ==
-        assert text == "\n".join([
-        'Usage: pypyexe testclass [options] [installation]','',
-        testclass_wrap.cmd.help,'',
-        'Options:',
-        "  --version   show program's version number and exit",
-        '  -h, --help  show this help message and exit',""])
-        
+        assert text == """\
+Usage: pypyexe testclass [options] [installation]
+
+%s
+
+Options:
+  --version   show program's version number and exit
+  -h, --help  show this help message and exit
+""" % testclass_wrap.cmd.help
+
         test_wrap = installation.commands['test']
         wrap = installation.commands['help']
         text, level = wrap.run_from_argv(['','help','test'])
