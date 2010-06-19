@@ -10,6 +10,7 @@ thepianpython-release:
 	# rm -f ./thepianpython
 	python2.5 pypy/translator/goal/translate.py --no-debug --output=thepianpython-release --stackless pypy/translator/goal/targetcommands.py
 	# mv ./pypy-c ./thepianpython
+	strip thepianpython-release
 
 maestrolib:
 	mkdir Library/maestro
