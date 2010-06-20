@@ -1,0 +1,8 @@
+# specific directories and files
+
+_cache
+pypy/lib/ctypes_config_cache/_*_cache.py
+
+# specific file patterns
+
+*.pyc
