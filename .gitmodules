@@ -1,0 +1,3 @@
+[submodule "webkit"]
+	path = webkit
+	url = http://github.com/tav/webkit.git
