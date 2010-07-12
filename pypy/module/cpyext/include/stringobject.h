@@ -7,7 +7,19 @@
 extern "C" {
 #endif
 
-PyObject * PyString_FromStringAndSize(const char *, Py_ssize_t);
+int PyOS_snprintf(char *str, size_t size, const  char  *format, ...);
+
+#define PyString_GET_SIZE(op) PyString_Size(op)
+#define PyString_AS_STRING(op) PyString_AsString(op)
+
+typedef struct {
+    PyObject_HEAD
+    char* buffer;
+    Py_ssize_t size;
+} PyStringObject;
+
+PyObject *PyString_FromFormatV(const char *format, va_list vargs);
+PyObject *PyString_FromFormat(const char *format, ...);
 
 #ifdef __cplusplus
 }

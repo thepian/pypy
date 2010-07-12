@@ -66,6 +66,12 @@ class TestUsingFramework(object):
         for fullname in dir(cls):
             if not fullname.startswith('define'):
                 continue
+            keyword = conftest.option.keyword
+            if keyword:
+                if keyword.startswith('test_'):
+                    keyword = keyword[len('test_'):]
+                if keyword not in fullname:
+                    continue
             prefix, name = fullname.split('_', 1)
             definefunc = getattr(cls, fullname)
             func = definefunc.im_func(cls)
@@ -653,8 +659,8 @@ class TestUsingFramework(object):
             to_sort[2] = 1
             to_sort[3] = 2
             qsort.push_arg(rffi.cast(rffi.VOIDP, to_sort))
-            qsort.push_arg(rffi.cast(rffi.SIZE_T, rffi.sizeof(rffi.LONG)))
             qsort.push_arg(rffi.cast(rffi.SIZE_T, 4))
+            qsort.push_arg(rffi.cast(rffi.SIZE_T, rffi.sizeof(rffi.LONG)))
             qsort.push_arg(rffi.cast(rffi.VOIDP, ptr.ll_closure))
             qsort.call(lltype.Void)
             result = [to_sort[i] for i in range(4)] == [1,2,3,4]

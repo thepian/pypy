@@ -7,7 +7,7 @@ import py
 from pypy.tool.uid import uid, Hashable
 from pypy.tool.descriptor import roproperty
 from pypy.tool.sourcetools import PY_IDENTIFIER, nice_repr_for_func
-from pypy.lib.identity_dict import identity_dict
+from pypy.tool.identity_dict import identity_dict
 
 """
     memory size before and after introduction of __slots__
@@ -206,16 +206,10 @@ class Block(object):
             txt = "%s(%s)" % (txt, self.exitswitch)
         return txt
 
-    def reallyalloperations(self):
-        """Iterate over all operations, including cleanup sub-operations.
-        XXX remove!"""
-        for op in self.operations:
-            yield op
-
     def getvariables(self):
         "Return all variables mentioned in this Block."
         result = self.inputargs[:]
-        for op in self.reallyalloperations():
+        for op in self.operations:
             result += op.args
             result.append(op.result)
         return uniqueitems([w for w in result if isinstance(w, Variable)])
@@ -223,7 +217,7 @@ class Block(object):
     def getconstants(self):
         "Return all constants mentioned in this Block."
         result = self.inputargs[:]
-        for op in self.reallyalloperations():
+        for op in self.operations:
             result += op.args
         return uniqueitems([w for w in result if isinstance(w, Constant)])
 
@@ -231,7 +225,7 @@ class Block(object):
         for a in mapping:
             assert isinstance(a, Variable), a
         self.inputargs = [mapping.get(a, a) for a in self.inputargs]
-        for op in self.reallyalloperations():
+        for op in self.operations:
             op.args = [mapping.get(a, a) for a in op.args]
             op.result = mapping.get(op.result, op.result)
         self.exitswitch = mapping.get(self.exitswitch, self.exitswitch)
@@ -328,6 +322,14 @@ class Constant(Hashable):
             self.concretetype = concretetype
 
 
+class UnwrapException(Exception):
+    """Attempted to unwrap a Variable."""
+
+class WrapException(Exception):
+    """Attempted wrapping of a type that cannot sanely appear in flow graph or
+    during its construction"""
+
+
 class SpaceOperation(object):
     __slots__ = "opname args result offset".split()
 
@@ -414,13 +416,14 @@ def mkentrymap(funcgraph):
         lst.append(link)
     return result
 
-def copygraph(graph, shallow=False, varmap={}):
+def copygraph(graph, shallow=False, varmap={}, shallowvars=False):
     "Make a copy of a flow graph."
     blockmap = {}
     varmap = varmap.copy()
+    shallowvars = shallowvars or shallow
 
     def copyvar(v):
-        if shallow:
+        if shallowvars:
             return v
         try:
             return varmap[v]

@@ -7,7 +7,7 @@ from pypy.rpython.lltypesystem import rffi, llgroup
 from pypy.rpython.lltypesystem.llmemory import Address, \
      AddressOffset, ItemOffset, ArrayItemsOffset, FieldOffset, \
      CompositeOffset, ArrayLengthOffset, \
-     GCHeaderOffset, GCREF
+     GCHeaderOffset, GCREF, AddressAsInt
 from pypy.rpython.lltypesystem.llarena import RoundedUpForAllocation
 from pypy.translator.c.support import cdecl, barebonearray
 
@@ -61,6 +61,8 @@ def name_signed(value, db):
             name = name_small_integer(value.lowpart, db)
             assert (value.rest & value.MASK) == 0
             return '(%s+%dL)' % (name, value.rest)
+        elif isinstance(value, AddressAsInt):
+            return '((long)%s)' % name_address(value.adr, db)
         else:
             raise Exception("unimplemented symbolic %r"%value)
     if value is None:
@@ -95,7 +97,9 @@ def name_float(value, db):
     elif isnan(value):
         return '(Py_HUGE_VAL/Py_HUGE_VAL)'
     else:
-        return repr(value)
+        x = repr(value)
+        assert not x.startswith('n')
+        return x
 
 def name_singlefloat(value, db):
     value = float(value)
@@ -146,9 +150,8 @@ def name_small_integer(value, db):
     if isinstance(value, Symbolic):
         if isinstance(value, llgroup.GroupMemberOffset):
             groupnode = db.getcontainernode(value.grpptr._as_obj())
-            return 'GROUP_MEMBER_OFFSET(%s, %s, member%s)' % (
+            return 'GROUP_MEMBER_OFFSET(%s, member%s)' % (
                 cdecl(groupnode.implementationtypename, ''),
-                groupnode.name,
                 value.index,
                 )
         else:

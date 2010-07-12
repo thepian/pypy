@@ -32,32 +32,22 @@ def checkdir(path):
     if not stat.S_ISDIR(st[0]):
         raise OSError(errno.ENOTDIR, path)
 
-lib_paths = [
-    ['pypy/lib/',
-    'lib-python/modified-{cpython-version}/',
-    'lib-python/{cpython-version}/',]
-]        
-
-def getinitialpath(srcdir):
-    # build the initial path from the srcdir, which is the path of
-    # the "dist" directory of a PyPy checkout.
+def getinitialpath(prefix):
     from pypy.module.sys.version import CPYTHON_VERSION
-
     dirname = '%d.%d.%d' % (CPYTHON_VERSION[0],
                             CPYTHON_VERSION[1],
                             CPYTHON_VERSION[2])
-    lib_python = os.path.join(srcdir, 'lib-python')
-
+    lib_python = os.path.join(prefix, 'lib-python')
     python_std_lib = os.path.join(lib_python, dirname)
     checkdir(python_std_lib)
     python_std_lib_modified = os.path.join(lib_python, 'modified-' + dirname)
     checkdir(python_std_lib_modified)
-    pypydir = os.path.join(srcdir, 'pypy')
-    pypy_lib = os.path.join(pypydir, 'lib')
-    checkdir(pypy_lib)
+    
+    lib_pypy = os.path.join(prefix, 'lib_pypy')
+    checkdir(lib_pypy)
 
     importlist = []
-    importlist.append(pypy_lib)
+    importlist.append(lib_pypy)
     importlist.append(python_std_lib_modified)
     importlist.append(python_std_lib)
     return importlist
@@ -68,7 +58,9 @@ def pypy_initial_path(space, srcdir):
     except OSError:
         return space.w_None
     else:
-        space.setitem(space.sys.w_dict, space.wrap('pypy_prefix'),
+        space.setitem(space.sys.w_dict, space.wrap('prefix'),
+                                        space.wrap(srcdir))
+        space.setitem(space.sys.w_dict, space.wrap('exec_prefix'),
                                         space.wrap(srcdir))
         return space.newlist([space.wrap(p) for p in path])
 

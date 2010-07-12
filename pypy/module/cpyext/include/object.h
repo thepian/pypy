@@ -3,17 +3,29 @@
 
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define Py_RETURN_NONE return Py_INCREF(Py_None), Py_None
+
+
+/*
+CPython has this for backwards compatibility with really old extensions, and now
+we have it for compatibility with CPython.
+*/
+#define staticforward static
 
 typedef void* Py_buffer;
 
 
 #define PyObject_HEAD  \
-    long obj_refcnt;       \
-    struct _object *obj_type;
+    long ob_refcnt;       \
+    struct _typeobject *ob_type;
 
 #define PyObject_VAR_HEAD		\
 	PyObject_HEAD			\
-	Py_ssize_t obj_size; /* Number of items in variable part */
+	Py_ssize_t ob_size; /* Number of items in variable part */
 
 #define PyObject_HEAD_INIT(type)	\
 	1, type,
@@ -29,10 +41,44 @@ typedef struct {
 	PyObject_VAR_HEAD
 } PyVarObject;
 
-#define Py_REFCNT(ob)		(((PyObject*)(ob))->obj_refcnt)
-#define Py_TYPE(ob)		(((PyObject*)(ob))->obj_type)
-#define Py_SIZE(ob)		(((PyVarObject*)(ob))->obj_size)
+#define Py_INCREF(ob)   (Py_IncRef((PyObject *)ob))
+#define Py_DECREF(ob)   (Py_DecRef((PyObject *)ob))
+#define Py_XINCREF(ob)  (Py_IncRef((PyObject *)ob))
+#define Py_XDECREF(ob)  (Py_DecRef((PyObject *)ob))
 
+#define Py_CLEAR(op)				\
+        do {                            	\
+                if (op) {			\
+                        PyObject *_py_tmp = (PyObject *)(op);	\
+                        (op) = NULL;		\
+                        Py_DECREF(_py_tmp);	\
+                }				\
+        } while (0)
+
+#if 0  /* This will be added with python 2.6 */
+#define Py_REFCNT(ob)		(((PyObject*)(ob))->ob_refcnt)
+#define Py_TYPE(ob)		(((PyObject*)(ob))->ob_type)
+#define Py_SIZE(ob)		(((PyVarObject*)(ob))->ob_size)
+#endif /* This will be added with python 2.6 */
+
+#define Py_None (&_Py_NoneStruct)
+
+/*
+Py_NotImplemented is a singleton used to signal that an operation is
+not implemented for a given type combination.
+*/
+#define Py_NotImplemented (&_Py_NotImplementedStruct)
+
+/* Rich comparison opcodes */
+/*
+    XXX: Also defined in slotdefs.py
+*/
+#define Py_LT 0
+#define Py_LE 1
+#define Py_EQ 2
+#define Py_NE 3
+#define Py_GT 4
+#define Py_GE 5
 
 struct _typeobject;
 typedef void (*freefunc)(void *);
@@ -170,7 +216,7 @@ typedef struct {
 	writebufferproc bf_getwritebuffer;
 	segcountproc bf_getsegcount;
 	charbufferproc bf_getcharbuffer;
-        getbufferproc bf_getbuffer;
+  getbufferproc bf_getbuffer;
 	releasebufferproc bf_releasebuffer;
 } PyBufferProcs;
 
@@ -257,8 +303,11 @@ typedef struct _typeobject {
 
 } PyTypeObject;
 
+/* Flag bits for printing: */
+#define Py_PRINT_RAW	1	/* No string quotes etc. */
+
 /*
-`Type flags (tp_flags)
+Type flags (tp_flags)
 
 These flags are used to extend the type structure in a backwards-compatible
 fashion. Extensions can use the flags to indicate (and test) when a given
@@ -374,25 +423,74 @@ manually remove this flag though!
 
 #define Py_TPFLAGS_DEFAULT Py_TPFLAGS_DEFAULT_EXTERNAL
 
-
-extern PyTypeObject *PyType_Type; /* built-in 'type' */
-extern PyTypeObject *PyBaseObject_Type;
-int PyPyType_Ready(PyTypeObject *);
-#define PyType_Ready PyPyType_Ready
+#define PyType_HasFeature(t,f)  (((t)->tp_flags & (f)) != 0)
 
 /* objimpl.h ----------------------------------------------*/
-
-PyObject * _PyObject_New(PyObject *);
-// PyVarObject * _PyObject_NewVar(PyTypeObject *, Py_ssize_t);
-
+#define PyObject_DEL PyObject_Del
 #define PyObject_New(type, typeobj) \
 		( (type *) _PyObject_New(typeobj) )
 #define PyObject_NewVar(type, typeobj, n) \
 		( (type *) _PyObject_NewVar((typeobj), (n)) )
 
-void PyObject_Del(void *);
+#define _PyObject_SIZE(typeobj) ( (typeobj)->tp_basicsize )
+#define _PyObject_VAR_SIZE(typeobj, nitems)	\
+	(size_t)				\
+	( ( (typeobj)->tp_basicsize +		\
+	    (nitems)*(typeobj)->tp_itemsize +	\
+	    (SIZEOF_VOID_P - 1)			\
+	  ) & ~(SIZEOF_VOID_P - 1)		\
+	)
+
+#define PyObject_INIT PyObject_Init
+#define PyObject_INIT_VAR PyObject_InitVar
+/*
+#define PyObject_NEW(type, typeobj) \
+( (type *) PyObject_Init( \
+	(PyObject *) PyObject_MALLOC( _PyObject_SIZE(typeobj) ), (typeobj)) )
+*/
+#define PyObject_NEW PyObject_New
+#define PyObject_NEW_VAR PyObject_NewVar
+
+/*
+#define PyObject_NEW_VAR(type, typeobj, n) \
+( (type *) PyObject_InitVar( \
+      (PyVarObject *) PyObject_MALLOC(_PyObject_VAR_SIZE((typeobj),(n)) ),\
+      (typeobj), (n)) )
+*/
+
+#define PyObject_GC_New(type, typeobj) \
+                ( (type *) _PyObject_GC_New(typeobj) )
+
+/* Utility macro to help write tp_traverse functions.
+ * To use this macro, the tp_traverse function must name its arguments
+ * "visit" and "arg".  This is intended to keep tp_traverse functions
+ * looking as much alike as possible.
+ */
+#define Py_VISIT(op)                                                    \
+        do {                                                            \
+                if (op) {                                               \
+                        int vret = visit((PyObject *)(op), arg);        \
+                        if (vret)                                       \
+                                return vret;                            \
+                }                                                       \
+        } while (0)
+
+#define PyObject_TypeCheck(ob, tp) \
+    ((ob)->ob_type == (tp) || PyType_IsSubtype((ob)->ob_type, (tp)))
+
+/* Copied from CPython ----------------------------- */
+int PyObject_AsReadBuffer(PyObject *, const void **, Py_ssize_t *);
+int PyObject_AsWriteBuffer(PyObject *, void **, Py_ssize_t *);
+int PyObject_CheckReadBuffer(PyObject *);
+
 
 /* PyPy internal ----------------------------------- */
 int PyPyType_Register(PyTypeObject *);
+#define PyObject_Length PyObject_Size
+#define _PyObject_GC_Del PyObject_GC_Del
 
+
+#ifdef __cplusplus
+}
 #endif
+#endif /* !Py_OBJECT_H */

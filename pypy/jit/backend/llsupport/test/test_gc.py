@@ -9,7 +9,7 @@ from pypy.jit.metainterp.gc import get_description
 
 
 def test_boehm():
-    gc_ll_descr = GcLLDescr_boehm(None, None)
+    gc_ll_descr = GcLLDescr_boehm(None, None, None)
     #
     record = []
     prev_funcptr_for_new = gc_ll_descr.funcptr_for_new
@@ -167,7 +167,8 @@ class TestFramework:
         gcdescr = get_description(config_)
         translator = FakeTranslator()
         llop1 = FakeLLOp()
-        gc_ll_descr = GcLLDescr_framework(gcdescr, FakeTranslator(), llop1)
+        gc_ll_descr = GcLLDescr_framework(gcdescr, FakeTranslator(), None,
+                                          llop1)
         gc_ll_descr.initialize()
         self.llop1 = llop1
         self.gc_ll_descr = gc_ll_descr
@@ -290,7 +291,7 @@ class TestFramework:
         v_random_box = BoxPtr()
         v_result = BoxInt()
         operations = [
-            ResOperation(rop.OOIS, [v_random_box, ConstPtr(s_gcref)],
+            ResOperation(rop.PTR_EQ, [v_random_box, ConstPtr(s_gcref)],
                          v_result),
             ]
         gc_ll_descr = self.gc_ll_descr
@@ -302,7 +303,7 @@ class TestFramework:
         assert operations[0].descr == gc_ll_descr.single_gcref_descr
         v_box = operations[0].result
         assert isinstance(v_box, BoxPtr)
-        assert operations[1].opnum == rop.OOIS
+        assert operations[1].opnum == rop.PTR_EQ
         assert operations[1].args == [v_random_box, v_box]
         assert operations[1].result == v_result
 
@@ -323,7 +324,7 @@ class TestFramework:
         v_random_box = BoxPtr()
         v_result = BoxInt()
         operations = [
-            ResOperation(rop.OOIS, [v_random_box, ConstPtr(s_gcref)],
+            ResOperation(rop.PTR_EQ, [v_random_box, ConstPtr(s_gcref)],
                          v_result),
             ]
         gc_ll_descr = self.gc_ll_descr
@@ -335,7 +336,7 @@ class TestFramework:
         finally:
             rgc.can_move = old_can_move
         assert len(operations) == 1
-        assert operations[0].opnum == rop.OOIS
+        assert operations[0].opnum == rop.PTR_EQ
         assert operations[0].args == [v_random_box, ConstPtr(s_gcref)]
         assert operations[0].result == v_result
         # check that s_gcref gets added to the list anyway, to make sure

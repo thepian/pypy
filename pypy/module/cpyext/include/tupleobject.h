@@ -7,9 +7,12 @@
 extern "C" {
 #endif
 
-PyObject * PyTuple_New(Py_ssize_t size);
+/* defined in varargswrapper.c */
 PyObject * PyTuple_Pack(Py_ssize_t, ...);
-int PyTuple_SetItem(PyObject *, Py_ssize_t, PyObject *);
+
+#define PyTuple_SET_ITEM PyTuple_SetItem
+#define PyTuple_GET_ITEM PyTuple_GetItem
+
 
 #ifdef __cplusplus
 }

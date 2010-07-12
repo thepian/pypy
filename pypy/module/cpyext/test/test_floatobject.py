@@ -1,34 +1,19 @@
-from pypy.module.cpyext.test.test_cpyext import AppTestCpythonExtensionBase
+from pypy.module.cpyext.test.test_api import BaseApiTest
 
-import py
-import sys
+class TestFloatObject(BaseApiTest):
+    def test_floatobject(self, space, api):
+        assert space.unwrap(api.PyFloat_FromDouble(3.14)) == 3.14
+        assert api.PyFloat_AsDouble(space.wrap(23.45)) == 23.45
+        assert api.PyFloat_AS_DOUBLE(space.wrap(23.45)) == 23.45
 
-class AppTestFloatObject(AppTestCpythonExtensionBase):
-    def test_floatobject(self):
-        import sys
-        init = """
-        if (Py_IsInitialized())
-            Py_InitModule("foo", methods);
-        """
-        body = """
-        static PyObject* foo_FromDouble(PyObject* self, PyObject *args)
-        {
-            return PyFloat_FromDouble(3.14);
-        }
-        static PyObject* foo_AsDouble(PyObject* self, PyObject *args)
-        {
-            PyObject* obj = PyFloat_FromDouble(23.45);
-            double d = PyFloat_AsDouble(obj);
-            Py_DECREF(obj);
-            return PyFloat_FromDouble(d);
-        }
-        static PyMethodDef methods[] = {
-            { "FromDouble", foo_FromDouble, METH_NOARGS },
-            { "AsDouble", foo_AsDouble, METH_NOARGS },
-            { NULL }
-        };
-        """
-        module = self.import_module(name='foo', init=init, body=body)
-        assert 'foo' in sys.modules
-        assert module.FromDouble() == 3.14
-        assert module.AsDouble() == 23.45
+        assert api.PyFloat_AsDouble(space.w_None) == -1
+        api.PyErr_Clear()
+
+    def test_coerce(self, space, api):
+        assert space.type(api.PyNumber_Float(space.wrap(3))) is space.w_float
+
+        class Coerce(object):
+            def __float__(self):
+                return 42.5
+        assert space.eq_w(api.PyNumber_Float(space.wrap(Coerce())),
+                          space.wrap(42.5))

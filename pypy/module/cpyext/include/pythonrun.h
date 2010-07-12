@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-int Py_IsInitialized(void);
+  void Py_FatalError(const char *msg);
 
 #ifdef __cplusplus
 }
