@@ -1,6 +1,8 @@
 .DS_Store
 *.pyc
 .idea
+.idea/*
+pypy.iws
 pypy/_cache
 pypy/lib/ctypes_config_cache/
 pypy/doc/_build
